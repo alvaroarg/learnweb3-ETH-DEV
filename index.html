@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LearnWeb3 First dApp</title>
+    <style>
+      body {
+        text-align: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      div {
+        width: 20%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+        margin: 10px 0px 5px 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>This is my dApp!</h1>
+      <label for="money">Send me money:</label> <br />
+      <input type="number" id="addMoney" />
+      <button onclick="addMoney()">Send</button>
+      <label for="money">Borrow money:</label> <br />
+      <input type="number" id="extractMoney" />
+      <button onclick="extractMoney()">Borrow</button>
+      <button onclick="getMoney()">Get money left</button>
+      <p id="showMoney"></p>
+    </div>
+  </body>
+</html>
+
+<script>
+  var extractMoney;
+  var addMoney;
+  var getMoney;
+</script>
+
+<script type="module">
+  import {
+    createWalletClient,
+    custom,
+    getContract,
+  } from "https://esm.sh/viem";
+
+  import { sepolia } from "https://esm.sh/viem/chains";
+
+  // Initialize the wallet client and contract
+  async function init() {
+    try {
+      const walletClient = createWalletClient({
+        chain: sepolia,
+        transport: custom(window.ethereum),
+      });
+
+      console.log("Requesting wallet connection...");
+      const accounts = await walletClient.requestAddresses();
+      const [address] = accounts;
+      console.log("Connected wallet address:", address);
+
+      // Replace with your contract address and ABI
+      const MoodContractAddress = "0x277F970e28877849E1cbFcA4aa44aE36851E20cF";
+      const MoodContractABI = [
+        {
+          inputs: [{ internalType: "int256", name: "_money", type: "int256" }],
+          name: "addMoney",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [{ internalType: "int256", name: "_money", type: "int256" }],
+          name: "extractMoney",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "getMoney",
+          outputs: [{ internalType: "int256", name: "", type: "int256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ];
+
+      const MoodContractInstance = getContract({
+        address: MoodContractAddress,
+        abi: MoodContractABI,
+        client: walletClient,
+      });
+
+      // Define functions for contract interaction
+      getMoney = async function () {
+        try {
+          const money = await MoodContractInstance.read.getMoney();
+          console.log("Balance:", money);
+          document.getElementById("showMoney").innerText = `Balance = ${money}`;
+        } catch (error) {
+          console.error("Error getting money:", error);
+          alert("Failed to get balance. See console for details.");
+        }
+      };
+
+      addMoney = async function () {
+        try {
+          const money = parseInt(document.getElementById("addMoney").value);
+          if (!money) {
+            alert("Please enter a valid amount to send.");
+            return;
+          }
+
+          await MoodContractInstance.write.addMoney([money], { account: address });
+          alert("Money sent!");
+        } catch (error) {
+          console.error("Error sending money:", error);
+          alert("Failed to send money. See console for details.");
+        }
+      };
+
+      extractMoney = async function () {
+        try {
+          const money = parseInt(document.getElementById("extractMoney").value);
+          if (!money) {
+            alert("Please enter a valid amount to borrow.");
+            return;
+          }
+
+          await MoodContractInstance.write.extractMoney([money], { account: address });
+          alert("Money borrowed!");
+        } catch (error) {
+          console.error("Error borrowing money:", error);
+          alert("Failed to borrow money. See console for details.");
+        }
+      };
+
+    } catch (error) {
+      console.error("Initialization error:", error);
+      alert("Failed to connect wallet. See console for details.");
+    }
+  }
+  window.onload = init;
+</script>
